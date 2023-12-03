@@ -1,0 +1,100 @@
+<style>
+
+canvas { border: 1px solid black; }
+.right { float: right; line-height:20px; }
+
+
+</style>
+<canvas width=800 height=600></canvas>
+<div class="right">
+  coord: <span id=coord></span><br>
+  radius: <span id=radius></span><br>
+  tool: <select id=tool>
+  <option>lineTo</option>
+  <option>arc</option>
+  <!--option>arcTo</option-->
+  </select>
+  <br/>
+  <small>(shift-click for moveTo)</small>
+  <br/><br/>
+  <select multiple id=drawq></select>
+  <br/>
+  <button id=undo>undo</button>
+  <br/><br/>
+  
+  <button id=generate>generate</button>
+  <br/>
+  <textarea id=code rows=20 lines=20></textarea>
+</div>
+<script
+  src="https://code.jquery.com/jquery-3.7.1.min.js"
+  integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+  crossorigin="anonymous"></script>
+<script>
+
+var drawq = [];
+var radius = 90;
+
+$(function() {
+  var ctx = $('canvas')[0].getContext('2d');
+  
+  function pushOp(op, coords) {
+    var obj = {};
+    obj[op] = coords;
+    drawq.push(obj);
+    $('#drawq').append('<option>'+op);
+    update();
+  }
+  
+  function update() {
+    ctx.clearRect(0, 0, 600, 800);
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    for(var d in drawq) {
+      for(var op in drawq[d]) {
+        var c = drawq[d][op];
+        if(op == 'arc') ctx.arc.apply(ctx, c);
+        if(op == 'lineTo') ctx.lineTo.apply(ctx, c);
+        if(op == 'moveTo') ctx.moveTo.apply(ctx, c);
+      }
+    }
+    //ctx.lineTo(300,150);
+    ctx.stroke();
+  }
+  
+  $('#generate').click(function() {
+    var txt = '';
+    for(var d in drawq) {
+      for(var op in drawq[d]) {
+        txt += 'ctx.'+ op +'('+ drawq[d][op].join(',') +');\n';
+      }
+    }
+    $('textarea').val(txt);
+  });
+  
+  $('#undo').click(function() {
+    drawq.pop();
+    $('#drawq option').last().remove();
+    update();
+  });
+  
+  $('canvas')
+    .on('mousewheel DOMMouseScroll', function(event){
+      var evt = event.originalEvent;
+      var dir = (evt.detail<0 || evt.wheelDelta>0) ? 1 : -1;
+      radius += dir;
+      $('#radius').html(radius);
+    })
+    .mousemove(function() {
+      $('#coord').html([event.offsetX,event.offsetY].join(','));
+    })
+    .click(function() {
+      var tool = (event.shiftKey ? 'moveTo' : $('#tool').val());
+      var args = [event.offsetX,event.offsetY];
+      if(tool == 'arc') args.push(radius, Math.PI*2, false);
+      pushOp(tool, args);
+    });
+});
+
+
+</script>
